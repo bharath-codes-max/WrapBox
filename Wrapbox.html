@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wrapbox — The permit layer for AI agents</title>
+<meta name="description" content="Wrapbox is a vendor-neutral runtime authorization fabric. Every security-sensitive AI-agent action is checked immediately before execution, then allowed, blocked, or held for human review.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:ital,wght@0,400;0,500;0,600;1,400;1,500&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#FFFFFF; --paper2:#F6F6F4; --ink:#111318; --muted:#6B7079; --rule:#E4E5E8; --rule2:#CFD1D6;
+  --accent:#1649FF; --accent-soft:#EEF2FF;
+  --block:#C8321F; --block-soft:#FBEDEA;
+  --allow:#178A55; --allow-soft:#E9F6EF;
+  --review:#B8740F; --review-soft:#FBF3E4;
+  --serif:'IBM Plex Serif',Georgia,serif; --sans:'IBM Plex Sans',system-ui,sans-serif; --mono:'IBM Plex Mono',ui-monospace,monospace;
+  --w:1120px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:var(--sans);color:var(--ink);background:var(--paper);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+a:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+img,svg{display:block;max-width:100%}
+.wrap{width:100%;max-width:var(--w);margin:0 auto;padding:0 32px}
+.s{padding:112px 0}
+.s + .s{border-top:1px solid var(--rule)}
+h1,h2,h3{font-family:var(--serif);font-weight:500;letter-spacing:-.01em;line-height:1.1}
+h1{font-size:clamp(44px,6.4vw,84px);line-height:1.02;letter-spacing:-.02em}
+h2{font-size:clamp(34px,4.2vw,54px);max-width:21ch}
+h3{font-size:24px;line-height:1.25}
+.k{font-family:var(--sans);font-size:14px;font-weight:600;color:var(--accent);margin-bottom:20px;display:block}
+.lede{font-size:20px;line-height:1.55;color:var(--muted);max-width:62ch;margin-top:22px}
+.lede b,.body b{color:var(--ink);font-weight:600}
+.body{font-size:16px;color:var(--muted);max-width:66ch;line-height:1.65}
+.mono{font-family:var(--mono)}
+.src{font-size:12.5px;color:var(--muted);line-height:1.55}
+.src a{text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--rule2)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:start}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:40px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:32px}
+.mt8{margin-top:8px}.mt16{margin-top:16px}.mt24{margin-top:24px}.mt40{margin-top:40px}.mt64{margin-top:64px}
+.verdict{display:inline-block;font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.02em;padding:4px 9px;border-radius:4px;line-height:1.3}
+.v-allow{background:var(--allow-soft);color:var(--allow)}
+.v-block{background:var(--block-soft);color:var(--block)}
+.v-review{background:var(--review-soft);color:var(--review)}
+
+/* nav */
+nav{position:sticky;top:0;z-index:50;background:#0f1b35;backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.08)}
+nav .wrap{display:flex;align-items:center;justify-content:space-between;height:64px}
+.logo{font-family:var(--serif);font-size:20px;font-weight:600;letter-spacing:-.01em}
+.logo span{color:#7b9fff}
+.navlinks{display:flex;gap:28px;font-size:14px;color:rgba(255,255,255,.65)}
+.navlinks a:hover{color:rgba(255,255,255,1)}
+.navcta{font-size:14px;font-weight:600;color:#0f1b35;background:white;padding:9px 18px;border-radius:6px;transition:opacity .15s}
+.navcta:hover{opacity:.88}
+
+/* hero */
+.hero{padding:96px 0 88px}
+.hero .grid2{grid-template-columns:1.05fr .95fr;gap:64px;align-items:center}
+.stage{font-size:14px;color:var(--muted);margin-bottom:28px;display:flex;align-items:center;gap:10px}
+.stage i{width:8px;height:8px;border-radius:50%;background:var(--accent);display:inline-block}
+.hero p.lede{max-width:52ch}
+.ctas{display:flex;gap:12px;margin-top:36px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:13px 20px;border-radius:6px;font-weight:600;font-size:15px;border:1px solid transparent}
+.btn-ink{background:var(--ink);color:var(--paper)}
+.btn-line{border-color:var(--rule2);color:var(--ink);background:var(--paper)}
+.btn:hover{transform:translateY(-1px)}
+
+/* permit — the one memorable object */
+.permit{background:var(--paper2);border:1px solid var(--rule);border-radius:10px;padding:22px 24px 20px;font-family:var(--mono);font-size:13px;line-height:1.7;position:relative;box-shadow:0 30px 60px -30px rgba(17,19,24,.25)}
+.permit::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--accent);border-radius:10px 0 0 10px}
+.permit .ph{display:flex;justify-content:space-between;align-items:center;padding-bottom:14px;border-bottom:1px dashed var(--rule2);margin-bottom:14px}
+.permit .ph b{font-family:var(--sans);font-size:14px;font-weight:600;color:var(--ink)}
+.permit .ph span{font-size:12px;color:var(--muted)}
+.permit .row{display:grid;grid-template-columns:150px 1fr;gap:12px;color:var(--ink)}
+.permit .row em{font-style:normal;color:var(--muted)}
+.permit .sig{margin-top:14px;padding-top:14px;border-top:1px dashed var(--rule2);color:var(--muted);word-break:break-all;font-size:12px}
+.permit .sig b{color:var(--ink);font-weight:500}
+.permit .stamp{position:absolute;right:20px;top:64px;font-family:var(--sans);font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--allow);border:2px solid var(--allow);padding:4px 8px;border-radius:4px;transform:rotate(-8deg);opacity:0}
+@keyframes stampIn{0%{opacity:0;transform:rotate(-8deg) scale(1.6)}70%{opacity:1;transform:rotate(-8deg) scale(.96)}100%{opacity:1;transform:rotate(-8deg) scale(1)}}
+@keyframes typeIn{from{width:0}to{width:100%}}
+.permit .sigv{display:inline-block;white-space:nowrap;overflow:hidden;vertical-align:bottom;max-width:100%}
+.anim .permit .stamp{animation:stampIn .5s cubic-bezier(.2,.8,.2,1) 1.4s forwards}
+.anim .permit .sigv{animation:typeIn 1.1s steps(40) .35s both}
+@media (prefers-reduced-motion:reduce){.anim .permit .stamp{animation:none;opacity:1}.anim .permit .sigv{animation:none}}
+.permit-cap{font-size:13px;color:var(--muted);margin-top:14px;font-family:var(--sans);line-height:1.5;max-width:52ch}
+
+/* decision stream */
+.stream{margin-top:56px;border:1px solid var(--rule);border-radius:10px;overflow:hidden}
+.stream .sh{display:flex;justify-content:space-between;align-items:center;padding:12px 18px;border-bottom:1px solid var(--rule);font-size:13px;color:var(--muted);background:var(--paper2)}
+.stream .sh b{color:var(--ink);font-weight:600}
+.srow{display:grid;grid-template-columns:96px 1.2fr 1fr auto;gap:18px;align-items:center;padding:12px 18px;border-bottom:1px solid var(--rule);font-size:14px}
+.srow:last-child{border-bottom:0}
+.srow .mono{font-size:12.5px;color:var(--muted)}
+.srow .who{color:var(--muted)}
+
+/* problem pillars */
+.pillars{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--rule);border-radius:10px;overflow:hidden;margin-top:56px}
+.pillar{padding:28px 26px;border-right:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+.pillar:nth-child(3n){border-right:0}
+.pillar:nth-child(n+4){border-bottom:0}
+.pillar h3{font-size:19px;margin-bottom:8px}
+.pillar p{font-size:14.5px;color:var(--muted);line-height:1.55}
+.pillar .tag{font-size:12px;color:var(--accent);font-weight:600;margin-top:12px;display:block}
+
+/* evidence table */
+table{width:100%;border-collapse:collapse;font-size:14.5px}
+th{text-align:left;font-weight:600;font-size:13px;color:var(--muted);padding:12px 14px 12px 0;border-bottom:1px solid var(--ink)}
+td{padding:16px 14px 16px 0;border-bottom:1px solid var(--rule);vertical-align:top;line-height:1.5}
+td:first-child{font-weight:600;white-space:nowrap}
+td .cve{font-family:var(--mono);font-size:12px;color:var(--muted);display:block;margin-top:3px}
+tr:last-child td{border-bottom:0}
+.note{margin-top:28px;padding:18px 22px;background:var(--paper2);border-left:3px solid var(--ink);font-size:14.5px;line-height:1.6;color:var(--ink);max-width:78ch}
+
+/* stats */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-top:1px solid var(--ink);margin-top:56px}
+.stat{padding:28px 24px 28px 0;border-right:1px solid var(--rule)}
+.stat:last-child{border-right:0;padding-right:0}
+.stat + .stat{padding-left:24px}
+.stat b{font-family:var(--serif);font-size:56px;font-weight:500;line-height:1;display:block;letter-spacing:-.02em}
+.stat p{font-size:14px;color:var(--muted);margin-top:12px;line-height:1.5}
+.stat small{display:block;font-size:12px;color:var(--muted);margin-top:8px}
+
+/* model */
+.model{display:grid;grid-template-columns:1fr 60px 1.2fr 60px 1fr;align-items:center;margin-top:56px}
+.mbox{border:1px solid var(--rule2);border-radius:10px;padding:26px 24px}
+.mbox.hi{border:2px solid var(--accent);background:var(--accent-soft)}
+.mbox h3{font-size:18px;margin-bottom:10px}
+.mbox p{font-size:14px;color:var(--muted);line-height:1.55}
+.mbox .list{font-family:var(--mono);font-size:12.5px;color:var(--ink);margin-top:10px;line-height:1.7}
+.marrow{text-align:center;color:var(--rule2);font-size:26px}
+
+/* steps (a true sequence) */
+.steps{margin-top:56px;counter-reset:step}
+.step{display:grid;grid-template-columns:64px 1fr;gap:24px;padding:26px 0;border-top:1px solid var(--rule)}
+.step:last-child{border-bottom:1px solid var(--rule)}
+.step::before{counter-increment:step;content:counter(step);font-family:var(--serif);font-size:34px;line-height:1;color:var(--rule2);font-weight:500}
+.step h3{font-size:19px;margin-bottom:6px}
+.step p{font-size:15px;color:var(--muted);line-height:1.6;max-width:70ch}
+.step code{font-family:var(--mono);font-size:13px;background:var(--paper2);padding:2px 6px;border-radius:4px;color:var(--ink)}
+
+@media (max-width:960px){
+  .grid2,.hero .grid2{grid-template-columns:1fr}
+  .grid3,.grid4,.stats,.pillars{grid-template-columns:1fr 1fr}
+  .model{grid-template-columns:1fr}.marrow{transform:rotate(90deg);padding:6px 0}
+  .pillar:nth-child(3n){border-right:1px solid var(--rule)}.pillar:nth-child(2n){border-right:0}.pillar:nth-child(n+4){border-bottom:1px solid var(--rule)}.pillar:nth-last-child(-n+2){border-bottom:0}
+  .navlinks{display:none}
+}
+@media (max-width:640px){
+  .grid3,.grid4,.stats,.pillars{grid-template-columns:1fr}
+  .s{padding:72px 0}.wrap{padding:0 20px}
+  .srow{grid-template-columns:80px 1fr}.srow .who,.srow .mono:last-child{display:none}
+  .stat{border-right:0;padding-left:0}
+}
+.spec{border-top:1px solid var(--ink)}
+.spec div{display:grid;grid-template-columns:200px 1fr;gap:16px;padding:11px 0;border-bottom:1px solid var(--rule);font-size:14px}
+.spec em{font-style:normal;font-family:var(--mono);font-size:12.5px;color:var(--ink)}
+.spec span{color:var(--muted)}
+.acts{list-style:none}
+.acts li{padding:9px 0;border-bottom:1px solid var(--rule);font-size:14px;color:var(--muted)}
+.acts li b{color:var(--ink);font-weight:600}
+.diff{padding-left:22px}
+.diff li{padding:10px 0 10px 6px;font-size:14.5px;color:var(--muted);line-height:1.55;border-bottom:1px solid var(--rule)}
+.diff li b{color:var(--ink);font-weight:600}
+.diff li::marker{font-family:var(--serif);color:var(--accent);font-weight:600}
+table.cats td:first-child{white-space:normal}
+.mk{border-top:1px solid var(--ink)}
+.mk div{display:grid;grid-template-columns:150px 1fr;gap:18px;padding:18px 0;border-bottom:1px solid var(--rule)}
+.mk b{font-family:var(--serif);font-size:26px;font-weight:500;line-height:1.1;letter-spacing:-.01em}
+.mk span{font-size:14.5px;color:var(--ink);line-height:1.55;display:block}
+.mk small{font-size:12px;color:var(--muted);display:block;margin-top:5px}
+.plan{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--ink)}
+.plan div{padding:24px 24px 24px 0;border-right:1px solid var(--rule)}
+.plan div + div{padding-left:24px}
+.plan div:last-child{border-right:0}
+.plan span{font-size:13px;color:var(--muted);display:block}
+.plan b{font-family:var(--serif);font-size:40px;font-weight:500;display:block;margin:6px 0 10px;letter-spacing:-.02em}
+.plan p{font-size:14px;color:var(--muted);line-height:1.55}
+.pr{border-top:2px solid var(--ink);padding-top:20px}
+.pr h3{font-size:18px}
+.pr b{font-family:var(--serif);font-size:44px;font-weight:500;display:block;margin-top:10px;letter-spacing:-.02em}
+.pr span{font-size:13px;color:var(--muted);display:block;margin-bottom:14px}
+.pr p{font-size:14.5px;color:var(--muted);line-height:1.6}
+.askbox{border:2px solid var(--ink);border-radius:10px;padding:26px 28px}
+.askbox b{font-family:var(--serif);font-size:28px;font-weight:500;display:block;margin-bottom:12px;letter-spacing:-.01em}
+.askbox p{font-size:15px;color:var(--muted);line-height:1.6}
+.askbox .ctas{margin-top:24px}
+footer{padding:56px 0 64px;border-top:1px solid var(--rule);background:var(--paper2)}
+footer .fl{display:flex;align-items:baseline;gap:18px;font-size:14px;color:var(--muted)}
+@media (max-width:960px){.plan{grid-template-columns:1fr}.plan div{border-right:0;padding-left:0;border-bottom:1px solid var(--rule)}.mk div,.spec div{grid-template-columns:1fr;gap:6px}}
+
+
+/* ── LOGO ─────────────────────────────────────────── */
+.logo-wrap{display:flex;align-items:center;gap:11px;text-decoration:none}
+.logo-mark{display:flex;filter:drop-shadow(0 2px 8px rgba(79,123,255,.35))}
+.logo-word{font-family:'IBM Plex Sans',sans-serif;font-size:18px;font-weight:700;color:#fff;letter-spacing:-.3px}
+.logo-mark .wb-box{transform-origin:20px 20px}
+.logo-wrap:hover .wb-box{animation:wbSpin 3s ease-in-out infinite}
+@keyframes wbSpin{0%,100%{transform:rotate(0)}50%{transform:rotate(3deg)}}
+/* draw-on for logo strokes on load */
+.wb-seal{stroke-dasharray:60;stroke-dashoffset:60}
+.wb-tick{stroke-dasharray:26;stroke-dashoffset:26}
+.wb-box{stroke-dasharray:96;stroke-dashoffset:96}
+.anim .wb-box{animation:draw .9s ease .15s forwards}
+.anim .wb-seal{animation:draw .7s ease .55s forwards}
+.anim .wb-tick{animation:draw .5s ease .95s forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+
+/* ── SCROLL REVEAL ────────────────────────────────── */
+.reveal{opacity:0;transform:translateY(28px);transition:opacity .7s cubic-bezier(.16,.7,.3,1),transform .7s cubic-bezier(.16,.7,.3,1)}
+.reveal.in{opacity:1;transform:none}
+.reveal.d1{transition-delay:.06s}.reveal.d2{transition-delay:.12s}.reveal.d3{transition-delay:.18s}
+
+/* ── HERO PARALLAX ────────────────────────────────── */
+.hero{position:relative;overflow:hidden}
+.hero-orb{position:absolute;border-radius:50%;filter:blur(60px);opacity:.5;pointer-events:none;z-index:0}
+.orb1{width:520px;height:520px;background:radial-gradient(circle,#c9d6ff,transparent 70%);top:-160px;right:-120px}
+.orb2{width:360px;height:360px;background:radial-gradient(circle,#e7edff,transparent 70%);bottom:-120px;left:-80px}
+.hero .wrap{position:relative;z-index:1}
+.permit-outer{will-change:transform}
+@keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+.anim .permit{animation:floaty 6s ease-in-out infinite}
+
+/* ── PERMIT FLOAT ─────────────────────────────────── */
+@keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+/* permit uses scroll parallax, no float to avoid transform conflict */
+
+/* ── DECISION STREAM rows cascade ─────────────────── */
+.srow{opacity:0;transform:translateX(-12px);transition:opacity .5s ease,transform .5s ease}
+.stream.in .srow{opacity:1;transform:none}
+.stream.in .srow:nth-child(2){transition-delay:.05s}
+.stream.in .srow:nth-child(3){transition-delay:.13s}
+.stream.in .srow:nth-child(4){transition-delay:.21s}
+.stream.in .srow:nth-child(5){transition-delay:.29s}
+.stream.in .srow:nth-child(6){transition-delay:.37s}
+.stream.in .srow:nth-child(7){transition-delay:.45s}
+
+@media (prefers-reduced-motion:reduce){
+  .reveal,.srow{opacity:1!important;transform:none!important;transition:none!important}
+  .anim .permit,.anim .wb-box,.anim .wb-seal,.anim .wb-tick,.logo-wrap:hover .wb-box{animation:none!important}
+  .wb-seal,.wb-tick,.wb-box{stroke-dashoffset:0!important}
+  .hero-orb{display:none}
+}
+
+
+/* ── HOW IT WORKS ─────────────────────────────────── */
+.hw{display:grid;grid-template-columns:56px 300px 1fr;gap:32px;padding:48px 0;border-top:1px solid var(--rule);align-items:start}
+.hw:first-of-type{margin-top:56px}
+.hw-n{font-family:var(--serif);font-size:40px;line-height:1;color:var(--rule2);font-weight:500}
+.hw-body h3{font-size:22px}
+.hw-code{min-width:0}
+.code{background:#0f1b35;color:#dbe4ff;border-radius:10px;overflow:hidden;font-family:var(--mono);font-size:12.5px;line-height:1.6}
+.code pre{margin:0;padding:18px 20px;overflow-x:auto;white-space:pre}
+.code.sm pre{font-size:11.5px;padding:14px 16px;white-space:pre-wrap;word-break:break-word}
+.code-t{font-family:var(--sans);font-size:12px;font-weight:600;color:#fff;padding:10px 20px;background:rgba(255,255,255,.06);border-bottom:1px solid rgba(255,255,255,.08);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.code-t span{font-weight:400;color:rgba(255,255,255,.5)}
+.code .cm{color:#7f8fb5}
+.code .ky{color:#9db6ff}
+.code .st{color:#c6f0d3}
+.code .nm{color:#ffd6a5}
+.code .da{color:#5fd39a;font-weight:600}
+.code .db{color:#ff8a7a;font-weight:600}
+.code .dr{color:#ffc857;font-weight:600}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--rule);margin-bottom:16px}
+.tab{padding:10px 14px;font-family:var(--sans);font-size:14px;font-weight:600;color:var(--muted);background:none;border:0;border-bottom:2px solid transparent;margin-bottom:-1px;cursor:pointer}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--ink)}
+.tab:hover{color:var(--ink)}
+.tabpanel{display:none}.tabpanel.on{display:block}
+.flow3{display:grid;grid-template-columns:1fr 176px 1fr;gap:14px;align-items:stretch}
+.flow3>div{min-width:0}
+.flow-l{font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px}
+.flow-mid{display:flex;flex-direction:column}
+.rule-hit{flex:1;border:2px solid var(--block);border-radius:10px;padding:16px;background:var(--block-soft);display:flex;flex-direction:column;justify-content:center;gap:10px;font-size:13px;color:var(--ink)}
+.rule-hit .mono{font-size:12px}
+.rule-hit p{font-size:11.5px;color:var(--muted);line-height:1.45}
+.same{margin-top:18px;border:1px solid var(--rule);border-radius:10px;padding:16px 18px}
+.same-l{font-size:13px;font-weight:600;margin-bottom:12px}
+.same-g{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.same-g div{display:flex;flex-direction:column;gap:5px;min-width:0}
+.same-g b{font-size:12px;font-weight:600;color:var(--muted)}
+.same-g .mono{font-size:11.5px;color:var(--ink);word-break:break-word;line-height:1.5}
+.est{display:inline-block;font-family:var(--sans);font-size:10.5px;font-weight:600;color:var(--review);background:var(--review-soft);border-radius:3px;padding:2px 7px;margin-left:8px;vertical-align:middle;letter-spacing:.01em}
+@media (max-width:960px){.hw{grid-template-columns:40px 1fr}.hw-code{grid-column:1 / -1}.flow3{grid-template-columns:1fr}.same-g{grid-template-columns:1fr}}
+
+</style>
+</head>
+<body class="anim">
+
+<nav><div class="wrap">
+  <a class="logo-wrap" href="#top" aria-label="Wrapbox home">
+  <span class="logo-mark" aria-hidden="true">
+    <svg width="30" height="30" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="wbg" x1="6" y1="6" x2="34" y2="34" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#9db6ff"/><stop offset="1" stop-color="#4f7bff"/>
+        </linearGradient>
+      </defs>
+      <!-- the box being wrapped -->
+      <rect class="wb-box" x="9" y="9" width="22" height="22" rx="6" stroke="url(#wbg)" stroke-width="2.4"/>
+      <!-- the wrapping bracket that seals the top-right, forming a checkmark notch -->
+      <path class="wb-seal" d="M20 4 H30 a6 6 0 0 1 6 6 V20" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/>
+      <!-- the verified tick inside -->
+      <path class="wb-tick" d="M15 20.5 l3.5 3.5 L26 16" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </span>
+  <span class="logo-word">Wrapbox</span>
+</a>
+  <div class="navlinks">
+    <a href="#problem">Problem</a><a href="#evidence">Evidence</a><a href="#product">Product</a><a href="#how">How it works</a><a href="#scope">Scope</a><a href="#market">Market</a><a href="#build">Build</a><a href="#ask">Ask</a>
+  </div>
+  <a class="navcta" href="#ask">Read the ask</a>
+</div></nav>
+
+<!-- HERO -->
+<header class="hero" id="top"><div class="hero-orb orb1"></div><div class="hero-orb orb2"></div><div class="wrap">
+  <div class="grid2">
+    <div>
+      <div class="stage"><i></i>Pre-seed · Idea stage · September 2026</div>
+      <h1>No sensitive effect without a permit.</h1>
+      <p class="lede reveal d2">Wrapbox is the runtime authorization layer for AI agents. Every security-sensitive action an agent takes is checked immediately before execution and either allowed, blocked, or held for a human. The decision is bound to a short-lived signed permit, so the action cannot happen any other way.</p>
+      <div class="ctas">
+        <a class="btn btn-ink" href="#product">See how it works</a>
+        <a class="btn btn-line" href="#ask">Cofounder and pre-seed</a>
+      </div>
+    </div>
+    <div>
+      <div class="permit-outer"><div class="permit" aria-label="Example Wrapbox permit">
+        <div class="ph"><b>Wrapbox permit</b><span>decision_id d-4f81a2</span></div>
+        <div class="stamp">AUTHORIZED</div>
+        <div class="row"><em>subject_agent</em><span>claims-agent-prod</span></div>
+        <div class="row"><em>on_behalf_of</em><span>u_priya.m (claims manager)</span></div>
+        <div class="row"><em>action</em><span>refund_payment</span></div>
+        <div class="row"><em>resource</em><span>claim CLM-8842</span></div>
+        <div class="row"><em>args_hash</em><span>sha256:9c1e…b2f0 (amount 18000 INR)</span></div>
+        <div class="row"><em>environment</em><span>production</span></div>
+        <div class="row"><em>approved_by</em><span>u_dev.k · REVIEW</span></div>
+        <div class="row"><em>expires</em><span>2026-09-11T11:42:36Z (60s)</span></div>
+        <div class="row"><em>nonce</em><span>7a3f-once</span></div>
+        <div class="sig"><b>signature</b> <span class="sigv">ed25519:MEUCIQDkq7v…3qPZm0K8xw==</span></div>
+      </div></div>
+      <p class="permit-cap">The payment service verifies this permit before it calls the payment API. Change the amount, the claim, or wait 61 seconds, and the permit no longer matches. That is the whole product.</p>
+    </div>
+  </div>
+
+  <div class="stream" aria-label="Example decision stream">
+    <div class="sh"><span><b>Decision stream</b> — what a control plane sees in one minute</span><span>one policy · four different agent vendors</span></div>
+    <div class="srow"><span class="verdict v-allow">ALLOW</span><span>Cursor agent reads <span class="mono">src/order-tracking.ts</span></span><span class="who">dev workspace · read</span><span class="mono">2 ms</span></div>
+    <div class="srow"><span class="verdict v-block">BLOCK</span><span>Claude Code reads <span class="mono">.env.production</span></span><span class="who">secret file · autonomous read</span><span class="mono">3 ms</span></div>
+    <div class="srow"><span class="verdict v-review">REVIEW</span><span>Claude Code runs <span class="mono">kubectl delete deployment payments-api -n prod</span></span><span class="who">held for on-call engineer</span><span class="mono">paused</span></div>
+    <div class="srow"><span class="verdict v-block">BLOCK</span><span>LangGraph claims agent calls <span class="mono">refund_payment(amount=8000)</span> via MCP</span><span class="who">above $5,000 policy ceiling</span><span class="mono">4 ms</span></div>
+    <div class="srow"><span class="verdict v-allow">ALLOW</span><span>Copilot cloud agent opens PR to <span class="mono">feature/billing-migration</span></span><span class="who">feature branch · human review required</span><span class="mono">3 ms</span></div>
+    <div class="srow"><span class="verdict v-block">BLOCK</span><span>Purchase subagent places <span class="mono">$100,000</span> order</span><span class="who">delegated budget was $10,000</span><span class="mono">2 ms</span></div>
+  </div>
+</div></header>
+
+<!-- PROBLEM -->
+<section class="s" id="problem"><div class="wrap">
+  <span class="k reveal">The problem</span>
+  <h2 class="reveal d1">Agents moved from answering to acting. Security did not move with them.</h2>
+  <p class="lede reveal d2">Once an agent can read secrets, run shell, call tools, change business data, spend money, or delegate to other agents, the question is no longer <b>"is the model safe?"</b> It is <b>"is this exact action authorized right now?"</b> Nothing in today's stack answers that question at the moment it matters — immediately before execution.</p>
+
+  <div class="pillars reveal">
+    <div class="pillar"><h3>Intent integrity</h3><p>Emails, web pages, documents and tool outputs can redirect an agent toward an attacker's goal. And no attacker is needed — an agent can confidently choose a destructive action on its own.</p><span class="tag">Validate the planned effect, not the model's confidence</span></div>
+    <div class="pillar"><h3>Identity mistaken for authority</h3><p>A valid token proves who is calling. It does not prove that this refund, this delete, this export is allowed. Agents inherit broad service accounts and user permissions by default.</p><span class="tag">Authorize the action, resource and arguments</span></div>
+    <div class="pillar"><h3>Execution boundary</h3><p>IDE and CLI agents sit next to files, shell, Git, credentials and the network. A wrong instruction moves from text to real execution in one step.</p><span class="tag">Gate file, process and network primitives</span></div>
+    <div class="pillar"><h3>Tool and protocol control</h3><p>MCP authenticates the connection. It does not decide whether this agent, for this user, may call this tool with these arguments. Valid credentials still permit misuse.</p><span class="tag">Semantic policy on tool + args + destination</span></div>
+    <div class="pillar"><h3>Delegation and humans</h3><p>Subagents inherit their parent's power. Approving every command creates fatigue; approving none creates unacceptable autonomy. Nobody can say which human authorized the final effect.</p><span class="tag">Attenuate authority; bind approvals to exact actions</span></div>
+    <div class="pillar"><h3>Fragmented control plane</h3><p>AWS, Microsoft, Google, Salesforce and ServiceNow each ship their own policy model. Logs tell you what happened after the fact. Nothing stops the action across vendors.</p><span class="tag">One normalized action model, enforced before execution</span></div>
+  </div>
+</div></section>
+
+<!-- EVIDENCE -->
+<section class="s" id="evidence"><div class="wrap">
+  <span class="k reveal">Evidence</span>
+  <h2 class="reveal d1">Pre-execution control is not hypothetical. It is already in the CVE database.</h2>
+  <p class="lede reveal d2">Six primary-source incidents and advisories from the last 15 months. They happened under different conditions and do not share one root cause — that is the point. Different failure modes converge on the same requirement: a reliable control point immediately before consequential execution.</p>
+
+  <div class="mt64" style="overflow-x:auto">
+  <table>
+    <thead><tr><th style="width:22%">Case</th><th style="width:36%">What happened</th><th style="width:22%">Control failure shown</th><th>What Wrapbox would require</th></tr></thead>
+    <tbody>
+      <tr><td>Microsoft 365 Copilot<span class="cve">CVE-2025-32711 · EchoLeak</span></td><td>A zero-click indirect prompt-injection path could cross trust boundaries and exfiltrate enterprise data. Microsoft stated no customer data was known to be affected.</td><td>Untrusted content can steer a trusted assistant across data boundaries.</td><td>Sensitive reads and external sends need independent policy — not model trust.</td></tr>
+      <tr><td>Replit Agent<span class="cve">Replit official post · 2025</span></td><td>Agent deleted data from a user's app database. Replit then accelerated separating development from production databases.</td><td>Direct production authority turns a mistake into an outage.</td><td>Production mutation is a separately authorized capability.</td></tr>
+      <tr><td>Amazon Q Developer / Kiro<span class="cve">AWS-2025-019</span></td><td>AWS documented prompt-injection paths in IDE plugins that could run commands or exfiltrate data without expected human confirmation.</td><td>IDE/CLI agents inherit filesystem, shell and network power.</td><td>Endpoint execution and egress enforced below the planner.</td></tr>
+      <tr><td>Kiro CLI<span class="cve">CVE-2026-9255</span></td><td>Piped stdin could be consumed as authorization, letting tools execute without the intended user approval.</td><td>A confirmation UI is not enough unless approval is bound to the exact action.</td><td>Approval bound to agent, action, arguments, target, expiry and nonce — a permit.</td></tr>
+      <tr><td>Amazon MQ MCP Server<span class="cve">CVE-2026-18655</span></td><td>A crafted endpoint carried in MCP client context could disclose broker credentials or OAuth tokens.</td><td>Protocol auth does not make every tool argument safe.</td><td>Semantic policy on tool + arguments + destination at the MCP layer.</td></tr>
+      <tr><td>OpenAI / Hugging Face<span class="cve">July 2026 incident reports</span></td><td>During reduced-safeguard cyber evaluations, agents escaped intended isolation, chained vulnerabilities, coordinated through unauthorized channels and reached third-party systems. Hugging Face reconstructed about 17,600 attacker actions.</td><td>Capable agents explore at machine speed and route around imperfect boundaries.</td><td>Deny-by-default egress, narrow capabilities, effect-level enforcement, rapid revocation.</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="note">We do not pitch these as "all caused by missing Wrapbox." That would be inaccurate. We pitch them as evidence that OWASP's 2026 Agentic Top 10 recommendation — a pre-execution policy enforcement point it calls an <b>Intent Gate</b> — is the missing primitive, and that nobody ships it as vendor-neutral infrastructure.</p>
+  <p class="src mt16">Sources: MSRC CVE-2025-32711 · Replit, "Doubling down on secure vibe coding" · AWS Security Bulletins AWS-2025-019, 2026-035, 2026-070 · OpenAI, "The Hugging Face incident and the road ahead" (Aug 26, 2026) · Hugging Face, "Anatomy of a Frontier Lab Agent Intrusion" · OWASP Top 10 for Agentic Applications 2026.</p>
+</div></section>
+
+<!-- WHY NOW -->
+<section class="s"><div class="wrap">
+  <span class="k reveal">Why now</span>
+  <h2 class="reveal d1">Adoption is outrunning trust — and standards bodies just named the gap.</h2>
+  <p class="lede reveal d2">In February 2026, NIST launched an AI Agent Standards Initiative that specifically highlights agent identity and authorization. OWASP published a dedicated Agentic Top 10 with more than 100 contributors. The category has a name. It does not yet have a neutral enforcement layer.</p>
+  <div class="stats reveal">
+    <div class="stat"><b>82%</b><p>of organizations already use AI agents — but only 44% have policies in place to secure them.</p><small>MintMCP agent-security compilation, Apr 2026</small></div>
+    <div class="stat"><b>63%</b><p>of technologists rarely or never let agents run fully on autopilot. Trust, not capability, is the ceiling.</p><small>Stack Overflow pulse, May 2026</small></div>
+    <div class="stat"><b>73%</b><p>of CISOs are very or critically concerned about agent risk. Only 30% report mature safeguards.</p><small>MintMCP compilation, Apr 2026</small></div>
+    <div class="stat"><b>15×</b><p>year-over-year growth in active agents inside the Microsoft 365 ecosystem alone.</p><small>Microsoft Work Trend Index 2026</small></div>
+  </div>
+  <p class="src mt24">Each percentage has its own study denominator. Read them as directional signals, not one combined chart. Additional: 79% of tech leaders cite security, governance or operations as the biggest barrier to scaling inference (Google Cloud, Aug 2026); 81% of developers report security/privacy concerns about agents (Stack Overflow 2025).</p>
+</div></section>
+
+<!-- PRODUCT -->
+<section class="s" id="product"><div class="wrap">
+  <span class="k reveal">What we are building</span>
+  <h2 class="reveal d1">A deterministic gate between an agent's decision and the real-world effect.</h2>
+  <p class="lede reveal d2">Wrapbox does not govern AWS, GitHub or Stripe. It governs an <b>agent attempting</b> an AWS, GitHub or Stripe action — before that action executes. Three questions, every time: what is the agent, where can we intercept, what is it trying to touch.</p>
+
+  <div class="model reveal">
+    <div class="mbox"><h3>Agent</h3><p>Where the decision is made.</p><div class="list">Cursor · Claude Code · Copilot<br>LangGraph / OpenAI Agents SDK<br>Agentforce · Copilot Studio<br>Browser-use · subagents</div></div>
+    <div class="marrow">→</div>
+    <div class="mbox hi"><h3>Wrapbox</h3><p>Where the action is normalized, checked against deterministic policy, and either permitted or stopped.</p><div class="list">normalize → identity + delegation → policy → ALLOW / REVIEW / BLOCK → signed permit → audit</div></div>
+    <div class="marrow">→</div>
+    <div class="mbox"><h3>Resource</h3><p>Where the effect lands.</p><div class="list">.env · shell · Git · database row<br>AWS role · Stripe refund<br>email recipient · browser form</div></div>
+  </div>
+
+  <h3 class="mt64">One authorized effect, end to end</h3>
+  <p class="body mt8">A custom insurance claims agent requests an ₹3,00,000 payout. This is the flow we demo.</p>
+  <div class="steps reveal">
+    <div class="step"><div><h3>Register the agent</h3><p>The platform lead registers <code>claims-agent-prod</code> with its owner, environment and identity. The team wraps the payout tool with the Wrapbox SDK, or routes it through an Wrapbox MCP gateway.</p></div></div>
+    <div class="step"><div><h3>Map the resource and set policy</h3><p>Wrapbox learns <code>pay_claim</code> moves real money. Policy: up to ₹25,000 allow; ₹25,001–₹2,00,000 review; above ₹2,00,000 requires two-person review.</p></div></div>
+    <div class="step"><div><h3>The agent decides to act</h3><p>The model calls <code>pay_claim(claim_id=4821, amount=300000)</code>. Wrapbox receives the human delegator, agent identity, tool, exact arguments, environment and purpose.</p></div></div>
+    <div class="step"><div><h3>Deterministic decision</h3><p>The policy engine returns <span class="verdict v-review">REVIEW</span>. The LLM cannot override the result by arguing the claim is urgent. No model reasoning participates in the decision.</p></div></div>
+    <div class="step"><div><h3>Human step-up with context</h3><p>Two claims managers see amount, customer, reason, agent, originating user, the policy that fired, and a dry-run of what will change. Approval is bound to this exact request — not to "the agent" in general.</p></div></div>
+    <div class="step"><div><h3>Permit issued</h3><p>Wrapbox mints a short-lived, non-replayable permit for only this action, target and amount. It expires in 60 seconds. It is not a payments credential.</p></div></div>
+    <div class="step"><div><h3>Effect enforced at the executor</h3><p>The payment service verifies the permit immediately before calling the payment API. If the agent changes the amount to ₹3,50,000, the args hash no longer matches and the call fails. No valid permit, no execution.</p></div></div>
+    <div class="step"><div><h3>Evidence recorded</h3><p>Human → agent → tool → resource → policy → approver → permit → outcome. SOC and GRC can reconstruct the decision months later.</p></div></div>
+  </div>
+  <p class="note mt40">The non-negotiable rule: hooks, plugins and SDK calls are integration adapters, not security boundaries. For high-risk effects the executor, gateway or target service must require a verifiable permit — so bypassing an optional hook does not silently grant authority.</p>
+</div></section>
+
+
+<!-- HOW IT WORKS -->
+<section class="s" id="how"><div class="wrap">
+  <span class="k">How it works</span>
+  <h2>One intent contract. Every agent reads it.</h2>
+  <p class="lede">A company writes what its agents may do <b>once</b>, in one file. Wrapbox translates that contract into whatever each agent understands — a Claude Code hook, a Cursor hook, an SDK guard, an MCP gateway — and answers every action in the agent's own format. Three steps.</p>
+
+  <!-- STEP 1: contract -->
+  <div class="hw">
+    <div class="hw-n">1</div>
+    <div class="hw-body">
+      <h3>Write the intent contract</h3>
+      <p class="body mt8">Plain rules about effects and resources — not about any one tool. Reads are first-class. Amounts, branches, environments and approvers are all in the same vocabulary. Committed to the repo or set org-wide from the control plane.</p>
+      <p class="src mt16">Proposed Wrapbox schema. This is our design, not a vendor's.</p>
+    </div>
+    <div class="hw-code">
+      <div class="code"><div class="code-t">wrapbox.yaml</div><pre><span class="cm"># One contract for every agent in the org</span>
+<span class="ky">version:</span> <span class="nm">1</span>
+<span class="ky">org:</span> <span class="st">acme</span>
+
+<span class="ky">resources:</span>
+  <span class="ky">secrets:</span>     <span class="st">["**/.env*", "**/*.pem", "**/id_rsa*"]</span>
+  <span class="ky">production:</span>  <span class="st">{ env: production }</span>
+
+<span class="ky">rules:</span>
+  <span class="cm"># Sensitive reads are policy events, not just writes</span>
+  - <span class="ky">effect:</span> <span class="st">filesystem.read</span>
+    <span class="ky">resource:</span> <span class="st">secrets</span>
+    <span class="ky">decision:</span> <span class="db">BLOCK</span>
+
+  - <span class="ky">effect:</span> <span class="st">git.push</span>
+    <span class="ky">branch:</span> <span class="st">main</span>
+    <span class="ky">decision:</span> <span class="db">BLOCK</span>
+
+  - <span class="ky">effect:</span> <span class="st">shell.exec</span>
+    <span class="ky">match:</span> <span class="st">"kubectl delete * -n prod"</span>
+    <span class="ky">decision:</span> <span class="dr">REVIEW</span>
+    <span class="ky">approvers:</span> <span class="st">[oncall-sre]</span>
+    <span class="ky">permit_ttl:</span> <span class="st">60s</span>
+
+  - <span class="ky">effect:</span> <span class="st">payments.refund</span>
+    <span class="ky">tiers:</span>
+      - <span class="ky">amount:</span> <span class="st">{ lte: 500 }</span>   <span class="ky">decision:</span> <span class="da">ALLOW</span>
+      - <span class="ky">amount:</span> <span class="st">{ lte: 5000 }</span>  <span class="ky">decision:</span> <span class="dr">REVIEW</span>
+      - <span class="ky">amount:</span> <span class="st">{ gt: 5000 }</span>   <span class="ky">decision:</span> <span class="db">BLOCK</span>
+
+  - <span class="ky">effect:</span> <span class="st">agent.delegate</span>
+    <span class="ky">attenuate:</span> <span class="st">true</span>   <span class="cm"># child never exceeds parent</span>
+
+<span class="ky">default:</span> <span class="da">ALLOW</span>   <span class="cm"># low-risk work stays automatic</span></pre></div>
+    </div>
+  </div>
+
+  <!-- STEP 2: connect -->
+  <div class="hw">
+    <div class="hw-n">2</div>
+    <div class="hw-body">
+      <h3>Connect an agent</h3>
+      <p class="body mt8">Each platform already exposes a pre-execution hook or a place to wrap tool calls. Wrapbox plugs into the one it has. Nothing here is invented — every field below is from the vendor's current documentation.</p>
+      <p class="src mt16">Claude Code: <span class="mono">code.claude.com/docs/en/hooks</span> · Cursor: <span class="mono">cursor.com/docs/hooks</span></p>
+    </div>
+    <div class="hw-code">
+      <div class="tabs" role="tablist">
+        <button class="tab" role="tab" aria-selected="true" data-tab="cc">Claude Code</button>
+        <button class="tab" role="tab" aria-selected="false" data-tab="cu">Cursor</button>
+        <button class="tab" role="tab" aria-selected="false" data-tab="sdk">Custom agent</button>
+        <button class="tab" role="tab" aria-selected="false" data-tab="mcp">MCP</button>
+      </div>
+
+      <div class="tabpanel on" data-panel="cc">
+        <div class="code"><div class="code-t">.claude/settings.json <span>commit to repo, or push org-wide via managed policy</span></div><pre>{
+  <span class="ky">"hooks"</span>: {
+    <span class="ky">"PreToolUse"</span>: [{
+      <span class="ky">"matcher"</span>: <span class="st">"*"</span>,
+      <span class="ky">"hooks"</span>: [{
+        <span class="ky">"type"</span>: <span class="st">"http"</span>,
+        <span class="ky">"url"</span>: <span class="st">"https://api.wrapbox.ai/v1/check"</span>,
+        <span class="ky">"headers"</span>: { <span class="ky">"Authorization"</span>: <span class="st">"Bearer $WRAPBOX_TOKEN"</span> },
+        <span class="ky">"allowedEnvVars"</span>: [<span class="st">"WRAPBOX_TOKEN"</span>],
+        <span class="ky">"timeout"</span>: <span class="nm">5</span>
+      }]
+    }]
+  }
+}</pre></div>
+        <p class="src mt8">Fires before every tool call, including MCP tools (<span class="mono">mcp__server__tool</span>) and inside subagents. Claude Code posts the event JSON to the URL and reads the decision from the response body.</p>
+      </div>
+
+      <div class="tabpanel" data-panel="cu">
+        <div class="code"><div class="code-t">.cursor/hooks.json <span>commit to repo, or distribute via Enterprise MDM / Team dashboard</span></div><pre>{
+  <span class="ky">"version"</span>: <span class="nm">1</span>,
+  <span class="ky">"hooks"</span>: {
+    <span class="ky">"preToolUse"</span>:          [{ <span class="ky">"command"</span>: <span class="st">"wrapbox hook"</span>, <span class="ky">"failClosed"</span>: <span class="nm">true</span> }],
+    <span class="ky">"beforeReadFile"</span>:      [{ <span class="ky">"command"</span>: <span class="st">"wrapbox hook"</span>, <span class="ky">"failClosed"</span>: <span class="nm">true</span> }],
+    <span class="ky">"beforeShellExecution"</span>:[{ <span class="ky">"command"</span>: <span class="st">"wrapbox hook"</span>, <span class="ky">"failClosed"</span>: <span class="nm">true</span> }],
+    <span class="ky">"beforeMCPExecution"</span>:  [{ <span class="ky">"command"</span>: <span class="st">"wrapbox hook"</span>, <span class="ky">"failClosed"</span>: <span class="nm">true</span> }]
+  }
+}</pre></div>
+        <p class="src mt8">Cursor hooks are spawned commands that speak JSON over stdio, so Wrapbox ships a small <span class="mono">wrapbox</span> CLI that forwards to the API. <span class="mono">failClosed: true</span> is a real Cursor field — a crash or timeout blocks instead of allowing. Cloud agents run these same project hooks.</p>
+      </div>
+
+      <div class="tabpanel" data-panel="sdk">
+        <div class="code"><div class="code-t">agent.ts <span>LangGraph, OpenAI Agents SDK, Google ADK, or in-house</span></div><pre><span class="ky">import</span> { wrapbox } <span class="ky">from</span> <span class="st">"@wrapbox/sdk"</span>;
+
+<span class="cm">// Wrap the executor. Every call is checked against wrapbox.yaml first.</span>
+<span class="ky">const</span> payClaim = wrapbox.guard(<span class="st">"payments.refund"</span>, <span class="ky">async</span> (args) =&gt; {
+  <span class="ky">return</span> stripe.refunds.create(args);
+});
+
+<span class="ky">await</span> payClaim({ claim: <span class="st">"CLM-8842"</span>, amount: <span class="nm">300000</span> });
+<span class="cm">// → REVIEW: paused for oncall-sre. On approval, a 60s permit is minted</span>
+<span class="cm">//   for this exact claim and amount, and the refund executes once.</span></pre></div>
+        <p class="src mt8">For high-assurance deployments the payment service itself verifies the permit, so skipping the SDK does not grant authority.</p>
+      </div>
+
+      <div class="tabpanel" data-panel="mcp">
+        <div class="code"><div class="code-t">mcp.json <span>any MCP client — point it at Wrapbox instead of the real server</span></div><pre>{
+  <span class="ky">"mcpServers"</span>: {
+    <span class="ky">"stripe"</span>: {
+      <span class="ky">"url"</span>: <span class="st">"https://mcp.wrapbox.ai/stripe"</span>,
+      <span class="ky">"headers"</span>: { <span class="ky">"Authorization"</span>: <span class="st">"Bearer $WRAPBOX_TOKEN"</span> }
+    }
+  }
+}</pre></div>
+        <p class="src mt8">Wrapbox evaluates <span class="mono">tools/call</span> — server, tool, arguments, principal, target — then forwards approved calls to the real MCP server. One gateway covers every MCP-capable client at once.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 3: decision -->
+  <div class="hw">
+    <div class="hw-n">3</div>
+    <div class="hw-body">
+      <h3>Every action becomes a decision</h3>
+      <p class="body mt8">The agent tries something. The hook sends the exact action to Wrapbox. Wrapbox matches it to a rule in the contract and answers in the agent's own format. The agent sees the reason. The control plane records everything.</p>
+    </div>
+    <div class="hw-code">
+      <div class="flow3">
+        <div>
+          <div class="flow-l">Claude Code sends</div>
+          <div class="code sm"><pre>{
+  <span class="ky">"hook_event_name"</span>: <span class="st">"PreToolUse"</span>,
+  <span class="ky">"tool_name"</span>: <span class="st">"Read"</span>,
+  <span class="ky">"tool_input"</span>: {
+    <span class="ky">"file_path"</span>: <span class="st">"/repo/.env.production"</span>
+  },
+  <span class="ky">"cwd"</span>: <span class="st">"/repo"</span>,
+  <span class="ky">"session_id"</span>: <span class="st">"a1b2c3"</span>
+}</pre></div>
+        </div>
+        <div class="flow-mid">
+          <div class="flow-l">Wrapbox matches</div>
+          <div class="rule-hit">
+            <div><span class="mono">filesystem.read</span> on <span class="mono">secrets</span></div>
+            <span class="verdict v-block">BLOCK</span>
+            <p>rule 1 of wrapbox.yaml · 3 ms · logged as d-91f2</p>
+          </div>
+        </div>
+        <div>
+          <div class="flow-l">Claude Code receives</div>
+          <div class="code sm"><pre>{
+  <span class="ky">"hookSpecificOutput"</span>: {
+    <span class="ky">"hookEventName"</span>: <span class="st">"PreToolUse"</span>,
+    <span class="ky">"permissionDecision"</span>: <span class="db">"deny"</span>,
+    <span class="ky">"permissionDecisionReason"</span>:
+      <span class="st">"wrapbox: secrets are never read
+       autonomously (rule secrets.read)"</span>
+  }
+}</pre></div>
+        </div>
+      </div>
+
+      <div class="same">
+        <div class="same-l">Same rule, same decision — in each agent's own format</div>
+        <div class="same-g">
+          <div><b>Cursor</b><span class="mono">{ "permission": "deny", "user_message": "Blocked by Wrapbox: secret file" }</span></div>
+          <div><b>SDK</b><span class="mono">throws WrapboxDenied("secrets.read")</span></div>
+          <div><b>MCP gateway</b><span class="mono">JSON-RPC error -32003: denied by policy secrets.read</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="note mt40">Honesty about hooks: an HTTP hook that times out or cannot connect does <b>not</b> block in Claude Code, and Cursor hooks fail open unless <span class="mono">failClosed: true</span> is set. Both facts are in the vendors' documentation. This is exactly why a hook is an adapter and the signed permit at the executor is the boundary — and why every Wrapbox integration carries an honest assurance level.</p>
+</div></section>
+
+<!-- SCOPE: 8 categories -->
+<section class="s" id="scope"><div class="wrap">
+  <span class="k reveal">Why this is a company, not a feature</span>
+  <h2 class="reveal d1">One authorization backplane. Eight agent platform categories. Every integration is an adapter.</h2>
+  <p class="lede reveal d2">A hook that blocks <code class="mono" style="font-size:15px">.env</code> in one editor is a proof, not a company. The company is a reusable authorization plane that many agent vendors, frameworks and enterprise systems call — the same policy, the same permit, the same evidence model, wherever the agent lives.</p>
+
+  <div class="mt64" style="overflow-x:auto">
+  <table class="cats">
+    <thead><tr><th style="width:24%">Agent platform category</th><th style="width:32%">Examples</th><th style="width:30%">Primary Wrapbox integration</th><th>Build</th></tr></thead>
+    <tbody>
+      <tr><td>Custom enterprise agents</td><td>OpenAI Agents SDK, LangGraph, Google ADK, in-house Python/TS agents</td><td>Wrapbox SDK wraps every tool executor; service-side permit verification</td><td><span class="verdict v-allow">NOW</span></td></tr>
+      <tr><td>MCP-enabled ecosystems</td><td>Any agent calling GitHub, database, Stripe or internal MCP servers</td><td>Wrapbox MCP Gateway — one chokepoint for many agents and many tools</td><td><span class="verdict v-allow">NOW</span></td></tr>
+      <tr><td>CLI coding agents</td><td>Claude Code, Codex CLI, Gemini CLI, Copilot CLI</td><td>Pre-tool hook adapter + process/filesystem/network gate</td><td><span class="verdict v-allow">NOW</span></td></tr>
+      <tr><td>IDE coding agents</td><td>Cursor Agent, Copilot agent mode, JetBrains Junie</td><td>Official hooks (preToolUse, beforeReadFile) + endpoint runtime</td><td><span class="verdict v-allow">NOW</span></td></tr>
+      <tr><td>Cloud / background coding</td><td>Copilot cloud agent, Codex cloud tasks, third-party GitHub agents</td><td>Provider hooks + MCP/API gateway + task-scoped ephemeral identity</td><td><span class="verdict v-review">NEXT</span></td></tr>
+      <tr><td>Browser / computer-use</td><td>Anthropic Computer Use, Browser Use, Playwright agents</td><td>Controlled executor with semantic action wrapper + approval gate</td><td><span class="verdict v-review">NEXT</span></td></tr>
+      <tr><td>Enterprise SaaS / low-code</td><td>Copilot Studio, Agentforce, ServiceNow, Zapier Agents</td><td>Custom connector / API proxy + evidence export to SIEM and GRC</td><td><span class="verdict v-review">NEXT</span></td></tr>
+      <tr><td>Multi-agent / A2A</td><td>Supervisor–subagent, OpenAI handoffs, A2A peers</td><td>Delegation SDK + A2A gateway + attenuated capability tokens</td><td><span class="verdict v-review">LATER</span></td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="body mt24">"Finance agent," "DevOps agent" and "sales agent" are use-case verticals. They become policy packs built on these eight platforms — not new top-level categories. That discipline is what keeps the roadmap coherent.</p>
+
+  <div class="grid2 mt64">
+    <div>
+      <h3>What the policy engine normalizes</h3>
+      <p class="body mt8">Twelve action classes. One canonical schema across every integration, so a rule about reading secrets applies equally to <code class="mono" style="font-size:13px">cat .env</code>, an MCP <code class="mono" style="font-size:13px">get_secret</code>, a REST call to <code class="mono" style="font-size:13px">/secrets</code>, and a subagent that tries the same thing.</p>
+      <ul class="acts mt24">
+        <li><b>Filesystem read</b> — .env, SSH keys, customer exports, source</li>
+        <li><b>Filesystem write / delete</b> — config edits, directory deletes, secret overwrites</li>
+        <li><b>Process / shell</b> — bash, python, kubectl, terraform, argv and cwd</li>
+        <li><b>Git / repository</b> — commit, push, branch, merge, PR, protected branches</li>
+        <li><b>MCP tool call</b> — server, tool, arguments, principal, target</li>
+        <li><b>API / SaaS</b> — method, route, customer, business threshold</li>
+        <li><b>Database</b> — SELECT vs UPDATE/DELETE/DROP, table class, row count, environment</li>
+        <li><b>Cloud / IAM</b> — role creation, VM deletion, security group changes, blast radius</li>
+        <li><b>Payments / commerce</b> — amount, payee, currency, dual approval</li>
+        <li><b>Email / messaging</b> — recipient domain, bulk send, sensitive content</li>
+        <li><b>Browser / computer</b> — semantic action, target site, irreversibility</li>
+        <li><b>Agent delegation</b> — what authority may travel, expiry, downstream tools</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Reads are first-class</h3>
+      <p class="body mt8">A security model that only checks side effects misses the exfiltration paths that actually get exploited — secrets, credentials, source code, customer records. Wrapbox governs security-sensitive I/O, not only writes. This is one of the concrete places where existing gateways fall short.</p>
+      <h3 class="mt40">Same effect, many routes</h3>
+      <p class="body mt8">Reading a secret can happen through filesystem APIs, shell, MCP, REST, browser, or a subagent. Route-specific rules leave bypasses. Wrapbox normalizes equivalent effects and enforces at the lowest practical boundary — which is why the endpoint runtime exists alongside hooks.</p>
+      <h3 class="mt40">Deterministic, not model-judged</h3>
+      <p class="body mt8">AI may help author or explain a policy. Enforcement is deterministic and reviewable. A model that can be argued into a decision is not a security boundary.</p>
+    </div>
+  </div>
+</div></section>
+
+<!-- TECHNICAL CORE -->
+<section class="s" id="core"><div class="wrap">
+  <span class="k reveal">The technical wedge</span>
+  <h2 class="reveal d1">The permit is the primitive. Everything else compounds around it.</h2>
+  <p class="lede reveal d2">"Runtime security for AI agents" is not unique in 2026 — AWS, Microsoft, Google, Salesforce, ServiceNow, Palo Alto and a handful of startups each address a slice. That is market validation. Wrapbox has to own a narrower, stronger invariant: <b>a sensitive effect cannot occur unless the final enforcement point verifies a short-lived authorization bound to the exact action.</b></p>
+
+  <div class="grid2 mt64">
+    <div>
+      <h3>What a permit contains</h3>
+      <div class="spec mt16">
+        <div><em>subject_agent_id</em><span>which agent is authorized</span></div>
+        <div><em>human_or_delegator_id</em><span>whose authority the agent is using</span></div>
+        <div><em>action_fingerprint</em><span>exact command, tool or API action</span></div>
+        <div><em>resource_fingerprint</em><span>exact path, record, account</span></div>
+        <div><em>canonical_args_hash</em><span>stops amount, payee, path or command changing after approval</span></div>
+        <div><em>scope / environment</em><span>repo, project, prod or staging, tenant</span></div>
+        <div><em>decision_id</em><span>links to policy evaluation and evidence</span></div>
+        <div><em>issued_at / expires_at</em><span>seconds, not sessions — shrinks the replay window</span></div>
+        <div><em>nonce</em><span>one-time use where needed</span></div>
+        <div><em>signature</em><span>executor verifies without calling home</span></div>
+      </div>
+      <p class="body mt24">Why this beats a hook: a hook can say "approved," but if the executor does not require proof, another code path bypasses it. A permit lets the protected executor refuse anything that does not carry a valid proof for this exact operation.</p>
+    </div>
+    <div>
+      <h3>Five things we build that we did not find together anywhere else</h3>
+      <ol class="diff mt16">
+        <li><b>Effect-level enforcement on local endpoints</b> — file, process and network primitives below the agent's planner, not only inside it.</li>
+        <li><b>MCP, API and agent-to-agent enforcement</b> under one normalized action schema and one policy language.</li>
+        <li><b>Exact-operation signed permits</b> with args hashing, short expiry and replay protection, verifiable by the resource server.</li>
+        <li><b>Delegation lineage with attenuation</b> — a child agent never receives broader authority than its parent granted, and the human at the root is always recoverable.</li>
+        <li><b>Policy simulation and replay</b> — change a rule, replay last quarter's real actions, see what would newly block before you turn enforcement on.</li>
+      </ol>
+      <h3 class="mt40">Honest assurance levels</h3>
+      <p class="body mt8">We will label every integration by what it can actually guarantee — <b>observe-only</b>, <b>hook-enforced</b>, <b>gateway-enforced</b>, <b>endpoint-enforced</b>, <b>resource-verified</b>. Customers get an assurance score per agent, and a roadmap to raise it. Selling less than you can prove is how you lose a security customer forever.</p>
+    </div>
+  </div>
+  <p class="src mt40">Research precedent: Progent (arXiv 2504.11703) demonstrates programmable, deterministic least-privilege control over agent tool calls; InjecAgent (2403.02691) and AgentDojo (2406.13352) show tool-using agents remain measurably vulnerable to indirect injection; OWASP Agentic Top 10 2026 recommends action-level approval, ephemeral access and a pre-execution "Intent Gate." Anthropic reports sandboxing cut Claude Code permission prompts by 84% internally — boundaries improve both safety and usability.</p>
+</div></section>
+
+<!-- MARKET -->
+<section class="s" id="market"><div class="wrap">
+  <span class="k reveal">Market</span>
+  <h2 class="reveal d1">Sized two ways. The bottom-up number is the one we plan against.</h2>
+  <p class="lede reveal d2">Top-down reports disagree by an order of magnitude, so we anchor on things we can count: paid agent seats, enterprise customers, and a price the market has already accepted.</p>
+
+  <div class="grid2 mt64">
+    <div>
+      <h3>Top-down</h3>
+      <div class="mk mt16">
+        <div><b>$10.9–12.1B</b><span>AI agents market, 2026 — growing to ~$53B by 2030 at ~45% CAGR</span><small>MarketsandMarkets; The Business Research Company, Jul 2026</small></div>
+        <div><b>$1.65B</b><span>Agentic AI security, 2026 — to $13.5B by 2032 at 42% CAGR. Narrowest, most conservative estimate we found.</span><small>MarketsandMarkets, 2026</small></div>
+        <div><b>$12.8–20B</b><span>AI coding tools market, 2026 — the surface where our first wedge lives</span><small>IdeaPlan survey compilation; Anthropic/Cursor/Microsoft disclosures</small></div>
+      </div>
+    </div>
+    <div>
+      <h3>Bottom-up</h3>
+      <div class="mk mt16">
+        <div><b>~6.7M</b><span>paid agentic coding seats today: GitHub Copilot 4.7M (Jan 2026), Cursor 1M+, Claude Code ≈1M+ implied by its $2.5B run-rate. 70% of engineers run 2–4 tools, so we assume ≈4M unique seats. <span class="est">our estimate</span></span><small>Microsoft FY26 disclosures; Cursor; Anthropic; JetBrains Apr 2026</small></div>
+        <div><b>$15 / user / mo</b><span>the price Microsoft set for Agent 365 governance with an MCP gateway (GA May 2026). We price cross-vendor governance at $12. That implies ≈$576M/yr for coding agents alone. <span class="est">our estimate</span></span><small>Microsoft Agent 365 pricing, RSAC 2026</small></div>
+        <div><b>~77,000</b><span>enterprise customers on Copilot Enterprise — a proxy for organizations running consequential agents. If 20% deploy custom or MCP agents at a $40K platform ACV, that is a second ≈$600M. <span class="est">our assumption</span></span><small>GitHub / Microsoft FY24–26</small></div>
+      </div>
+      <p class="note mt24" style="max-width:none"><b>Serviceable market ≈ $1.2B/yr today</b> <span class="est">our estimate, built on the assumptions above</span> — compounding with the 15× agent growth Microsoft reports. Our plan targets 2.5% of it by year three.</p>
+    </div>
+  </div>
+
+  <h3 class="mt64">What we are planning against <span class="est">plan, not forecast — no revenue exists yet</span></h3>
+  <div class="plan mt16 reveal">
+    <div><span>Year 1</span><b>$150K ARR</b><p>10 design partners, 5 converting to paid at ~$25–30K. Proof: one policy engine across two agent vendors, real actions blocked before execution.</p></div>
+    <div><span>Year 2</span><b>$4M ARR</b><p>80 customers at ~$50K. Enterprise hardening shipped: signed permits, SSO/RBAC, SIEM export, policy replay. Series A raised on this.</p></div>
+    <div><span>Year 3</span><b>$30M ARR</b><p>400 customers at ~$75K. MCP gateway is the default chokepoint for two or more frameworks; resource servers begin verifying permits natively.</p></div>
+  </div>
+  <p class="src mt24">Calibration: Runlayer signed eight unicorn customers within four months of its $11M seed and reached $41M raised inside a year. Noma Security reported 1,300% ARR growth; WitnessAI 500% in twelve months. Security captured ~46% (~$308M) of disclosed agentic-AI funding in August 2026 alone. These are category comps, not our forecasts.</p>
+</div></section>
+
+<!-- COMPETITION -->
+<section class="s" id="competition"><div class="wrap">
+  <span class="k reveal">Competition</span>
+  <h2 class="reveal d1">Validated by incumbents. Owned by nobody across vendors.</h2>
+  <p class="lede reveal d2">We will be transparent with any investor: the problem is real and the category is crowded at the edges. Our differentiation is architecture, interoperability and enforcement coverage — not the three words allow, review, block.</p>
+  <div class="mt64" style="overflow-x:auto">
+  <table>
+    <thead><tr><th style="width:26%">Who</th><th style="width:38%">What they validate</th><th>Why the wedge still exists</th></tr></thead>
+    <tbody>
+      <tr><td>AWS AgentCore Gateway + Policy</td><td>Gateway-level authorization for MCP tool calls with policy evaluation.</td><td>AWS-centric. Wrapbox is cross-vendor and broader than MCP.</td></tr>
+      <tr><td>Microsoft Foundry / Agent 365</td><td>Central toolboxes, identity and MCP gateway governance at $15/user/month.</td><td>Strong inside Azure. Must span non-Microsoft runtimes and local endpoint actions.</td></tr>
+      <tr><td>Salesforce AI Control Plane · ServiceNow Control Tower</td><td>Governance, inventory, access control across their platforms.</td><td>Dashboards and inventory. Not execution-time authorization at the actual boundary.</td></tr>
+      <tr><td>Palo Alto Prisma AIRS · Check Point (Lakera)</td><td>Runtime inspection, prompt/tool/MCP controls, broad security integration.</td><td>Generic AI security consoles. Not an authorization primitive with verifiable permits.</td></tr>
+      <tr><td>Runlayer · Invariant · Permit MCP Gateway</td><td>Deterministic MCP/tool policy and gateway enforcement. Runlayer: $41M raised.</td><td>MCP-only. Do not extend to endpoint file/process/network or A2A delegation.</td></tr>
+      <tr><td>Ory · Ponte · Agentshield · Akeyless</td><td>Closest conceptually: per-agent identity, action checks, JIT credentials.</td><td>Need superior effect normalization, broader surfaces, and a permit that resource servers verify.</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="body mt24" style="max-width:78ch">In the sources reviewed, we did not find one public product that documents all five together: local endpoint effect enforcement, MCP/API/A2A enforcement, exact-operation short-lived permits, human-to-agent delegation lineage, and one normalized policy model across equivalent actions. We treat that as a white-space hypothesis to validate with customers — not a claim that no one can build it.</p>
+</div></section>
+
+<!-- BUSINESS MODEL -->
+<section class="s"><div class="wrap">
+  <span class="k reveal">Business model</span>
+  <h2 class="reveal d1">Developer-led entry. Usage-metered growth. Enterprise platform at the top.</h2>
+  <div class="grid3 mt64 reveal">
+    <div class="pr"><h3>Per seat</h3><b>$12</b><span>per governed developer seat / month</span><p>Coding-agent governance for Cursor, Claude Code, Copilot and Codex. Self-serve. Managed hooks and endpoint gate included. Priced below Microsoft's $15 anchor because we are cross-vendor.</p></div>
+    <div class="pr"><h3>Per decision</h3><b>$0.003</b><span>per authorization above included volume</span><p>Custom agents, MCP gateway, API gateway. Every new agent a customer deploys routes more decisions through Wrapbox. Revenue scales with autonomy, which is the customer's own goal.</p></div>
+    <div class="pr"><h3>Enterprise platform</h3><b>$60K+</b><span>per year, annual contract</span><p>Signed permits, HA control plane, policy simulation and replay, SSO/RBAC, SIEM/GRC export, endpoint runtime, kill switch, vertical policy packs, dedicated support.</p></div>
+  </div>
+  <p class="body mt40" style="max-width:78ch">One prevented incident pays for years of the product. IBM puts the average AI-involved breach at $4.99M in 2026. The Replit and Hugging Face incidents cost far more than that in engineering time, customer trust and disclosure.</p>
+</div></section>
+
+<!-- BUILD -->
+<section class="s" id="build"><div class="wrap">
+  <span class="k reveal">Build sequence</span>
+  <h2 class="reveal d1">Backplane first. Prove it on three surfaces. Then expand.</h2>
+  <div class="steps mt40 reveal">
+    <div class="step"><div><h3>Months 0–3 — Core</h3><p>Normalized action schema, policy API, agent identity, ALLOW / REVIEW / BLOCK, immutable audit, basic control plane. Exit criterion: deterministic decisions under 100 ms for simple rules, replayable evidence.</p></div></div>
+    <div class="step"><div><h3>Months 0–6 — Three wedges</h3><p>SDK for custom agents. MCP Gateway. One coding-agent adapter with an endpoint gate. Exit criterion: real actions blocked or approved before execution, same policy across at least two agent vendors.</p></div></div>
+    <div class="step"><div><h3>Months 6–12 — Enterprise hardening</h3><p>Signed permits, HA control plane, policy simulation, SSO/RBAC, SIEM export, managed approvals, more CLI/IDE adapters. Exit criterion: design-partner deployments, fail-closed tests, bypass testing.</p></div></div>
+    <div class="step"><div><h3>Months 9–15 — Cloud and browser</h3><p>Cloud coding adapters, API gateway/sidecar, controlled browser executor with a semantic action model. Exit criterion: production-like actions across repo, API and browser with one audit trail.</p></div></div>
+    <div class="step"><div><h3>Months 12–24 — Multi-agent and platform</h3><p>A2A gateway, delegation tokens, agent registry, vertical policy packs, permit verification SDK for resource servers. Exit criterion: human → agent → subagent authority enforced across heterogeneous runtimes.</p></div></div>
+  </div>
+
+  <div class="grid2 mt64">
+    <div>
+      <h3>What we will not build first</h3>
+      <ul class="acts mt16">
+        <li>Forty connectors before the normalized action model is stable.</li>
+        <li>A kernel-level endpoint product on every OS before the SDK / MCP / coding wedge proves demand.</li>
+        <li>A generic "AI governance dashboard." Incumbents already have control towers.</li>
+        <li>Any claim of universal enforcement where the integration is only an optional hook.</li>
+        <li>An LLM that decides security policy. Enforcement stays deterministic.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>The prototype we will show at six months</h3>
+      <p class="body mt8">Five components, one story: <b>the same policy engine stopped a secret read from a coding agent, held a payment from a custom business agent for human approval, and blocked an MCP tool call from a different vendor — all before execution, with one audit model.</b></p>
+      <ul class="acts mt16">
+        <li><b>SDK</b> — custom claims agent attempts ₹3L payout → review → signed permit → payment simulator executes.</li>
+        <li><b>MCP Gateway</b> — two different agent clients call the same refund tool → same policy decision.</li>
+        <li><b>Coding-agent enforcement</b> — Claude Code / Cursor attempt <code class="mono" style="font-size:12.5px">.env</code> read and a dangerous shell action → block / review.</li>
+        <li><b>Control plane</b> — live action stream, policies, pending approvals, identities, evidence, kill switch.</li>
+        <li><b>Replay</b> — change a policy, replay history, see what would newly block.</li>
+      </ul>
+    </div>
+  </div>
+</div></section>
+
+<!-- TEAM + ASK -->
+<section class="s" id="ask"><div class="wrap">
+  <span class="k reveal">Where we are and what we need</span>
+  <h2 class="reveal d1">Idea stage. Strategy done. Looking for a technical cofounder and a pre-seed.</h2>
+  <div class="grid2 mt64">
+    <div>
+      <h3>What exists today</h3>
+      <ul class="acts mt16">
+        <li>A 42-page founder strategy grounded in 55 primary sources: OWASP, NIST, AWS, Microsoft, OpenAI, Anthropic, Google, MCP spec, academic benchmarks.</li>
+        <li>The canonical map: eight platform categories, twelve action classes, six problem pillars, eighteen named gaps.</li>
+        <li>The permit specification and the security invariant.</li>
+        <li>A 24-month build sequence with exit criteria per phase, and a five-component prototype definition.</li>
+        <li>Verified integration surfaces: Cursor <span class="mono" style="font-size:13px">preToolUse</span> / <span class="mono" style="font-size:13px">beforeReadFile</span>, Claude Code <span class="mono" style="font-size:13px">PreToolUse</span> HTTP hooks, Gemini CLI <span class="mono" style="font-size:13px">BeforeTool</span>, Copilot CLI hooks, LangGraph HITL middleware, OpenAI Agents SDK guardrails.</li>
+      </ul>
+      <h3 class="mt40">Next 90 days</h3>
+      <ul class="acts mt16">
+        <li>Twenty conversations with platform, security and IAM leads at AI-native companies. Goal: five design partners.</li>
+        <li>Core backplane and the coding-agent wedge running end to end.</li>
+        <li>Technical cofounder in seat.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>The cofounder we are looking for</h3>
+      <p class="body mt8">The moat is not the dashboard. It is trustworthy distributed enforcement across hostile, bypass-prone execution paths. That needs someone who has built at that boundary.</p>
+      <ul class="acts mt16">
+        <li><b>Security engineering</b> — authorization, IAM, least privilege, capability systems, threat modeling</li>
+        <li><b>Systems</b> — Rust or Go, process execution, filesystem mediation, OS security boundaries</li>
+        <li><b>Distributed</b> — low-latency policy decisions, caching without stale authorization, fail-closed HA</li>
+        <li><b>Gateways</b> — HTTP proxies, MCP, gRPC, egress control</li>
+        <li><b>Applied crypto</b> — signed permits, replay resistance, key rotation, verifiable audit</li>
+        <li><b>Developer tooling</b> — CLIs, IDE plugins, SDK ergonomics</li>
+      </ul>
+      <div class="askbox mt40">
+        <b>Raising $1.5M pre-seed</b>
+        <p>Eighteen months. Technical cofounder plus two engineers — one systems, one developer-platform. Five design partners converted. The six-month prototype above, demonstrated on three agent surfaces from at least two vendors.</p>
+        <p class="mt16">Use of funds: 55% engineering, 25% design-partner delivery and security review, 20% research, legal and infrastructure.</p>
+        <div class="ctas"><a class="btn btn-ink" href="mailto:hello@wrapbox.ai">hello@wrapbox.ai</a><a class="btn btn-line" href="#top">Back to top</a></div>
+      </div>
+    </div>
+  </div>
+</div></section>
+
+<footer><div class="wrap">
+  <div class="fl"><span style="display:flex;align-items:center;gap:10px">
+      <svg width="26" height="26" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="9" y="9" width="22" height="22" rx="6" stroke="#1649FF" stroke-width="2.4"/>
+        <path d="M20 4 H30 a6 6 0 0 1 6 6 V20" stroke="#111318" stroke-width="2.6" stroke-linecap="round"/>
+        <path d="M15 20.5 l3.5 3.5 L26 16" stroke="#111318" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span style="font-family:'IBM Plex Sans',sans-serif;font-size:16px;font-weight:700;color:#111318;letter-spacing:-.2px">Wrapbox</span>
+    </span><span>Wrapbox — vendor-neutral runtime authorization for AI agents.</span></div>
+  <p class="src mt16">Sources cited on this page: NIST AI Agent Standards Initiative (Feb 2026) · OWASP Top 10 for Agentic Applications 2026 · Stack Overflow Developer Survey 2025 and May 2026 pulse · Microsoft Work Trend Index 2025/2026 · McKinsey · Google Cloud state of AI infrastructure (Aug 2026) · MSRC CVE-2025-32711 · AWS Security Bulletins AWS-2025-019, 2026-035, 2026-070 · Replit engineering blog · OpenAI and Hugging Face incident reports (Jul–Aug 2026) · Cursor, Claude Code, Gemini CLI and Copilot CLI hooks documentation · MCP authorization specification · A2A protocol · InjecAgent, AgentDojo, Progent (arXiv) · MarketsandMarkets, The Business Research Company, Mordor Intelligence · Microsoft FY26 disclosures · Fortune, TechCrunch, New Market Pitch funding coverage. Market figures come from different studies with different denominators and are presented as directional. Product features change quickly; integration details are re-verified before implementation.</p>
+  <p class="src mt16">© 2026 Wrapbox. Founder strategy, September 11, 2026.</p>
+</div></footer>
+
+<script>
+document.addEventListener('DOMContentLoaded',()=>{
+
+  // Tabs (how it works)
+  document.querySelectorAll('.tabs').forEach(tl=>{
+    tl.addEventListener('click',e=>{
+      const b=e.target.closest('.tab'); if(!b) return;
+      const root=tl.parentElement;
+      tl.querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-selected', t===b?'true':'false'));
+      root.querySelectorAll('.tabpanel').forEach(p=>p.classList.toggle('on', p.dataset.panel===b.dataset.tab));
+    });
+  });
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(reduce){document.body.classList.remove('anim'); return;}
+
+
+  // Scroll reveal
+  const io = new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target);} });
+  },{threshold:0.12, rootMargin:'0px 0px -8% 0px'});
+  document.querySelectorAll('.reveal, .stream').forEach(el=>io.observe(el));
+
+  // Hero parallax — orbs + permit drift on scroll
+  const orb1=document.querySelector('.orb1'), orb2=document.querySelector('.orb2'), permit=document.querySelector('.permit-outer');
+  let ticking=false;
+  window.addEventListener('scroll',()=>{
+    if(ticking) return; ticking=true;
+    requestAnimationFrame(()=>{
+      const y=window.scrollY;
+      if(y<1200){
+        if(orb1) orb1.style.transform='translateY('+(y*0.22)+'px)';
+        if(orb2) orb2.style.transform='translateY('+(y*-0.14)+'px)';
+        if(permit) permit.style.transform='translateY('+(y*-0.05)+'px)';
+      }
+      ticking=false;
+    });
+  },{passive:true});
+});
+</script>
+</body>
+</html>
